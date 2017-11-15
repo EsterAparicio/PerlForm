@@ -1,0 +1,170 @@
+#!C:\xampp\perl\bin\perl.exe
+
+use CGI;
+
+my $q = new CGI;
+
+if(!$q->param) {
+    print $q->header(-charset => 'utf-8');
+
+    print $q->start_html(-title => 'Formulario');
+    print $q->start_form(
+        -name    => 'main_form',
+        -method  => 'GET',
+        -enctype => &CGI::URL_ENCODED,
+        -onsubmit => 'return javascript:validation_function()',
+    );
+    #print $q->h2('Para continuar, primero debe introducir una contraseña');
+    #print $q->textfield(
+    	#-name => 'Password',
+    	#-value => '****',
+    	#);
+    #Para hacer algo un poco más interesante pedimos una contraseña para acceder al formulario.
+    #El problema es que no consigo que me muestre el formulario si la contraseña es correcta. 
+
+	#my $password;
+
+	#@p = $q -> param('Password');
+	#$password='pass123';
+
+	#if($p eq $password){
+    print "<div class=\"bodymain\" align=\"center\">\n";
+    #Añade una imagen de prueba
+    print $q->img({-src=> 'http://www.aliencoders.org/wp-content/uploads/2015/05/I-want-you-to-learn-Perl.jpg',
+            -alt=>'Imagen de prueba en Perl',
+            -height=>"300",
+            -width=>"300"
+            });
+    #----------------------------------------#
+    print $q->hr;
+    print $q->h2({-style=>"color:darkblue"},'¡Se agradece si podemos saber tu nombre!');
+    print $q->textfield(
+        -name      => 'Nombre',
+        -value     => 'nombre',
+        -size      => 20,
+        -maxlength => 30,
+    );
+
+    print $q->h2({-style=>"color:darkblue"},'¿Cuáles son los juegos de Noviembre que más esperas?');
+    print $q->checkbox_group(
+        -name     => 'Videogame',
+        -values   => ['CoD:WWII', 'Nioh', 'L.A.Noire', 'SW:Battlefront II', 'Pokémon Ultra Sun/Moon', 'RE:Revelations'],
+        -defaults => ['SW:Battlefront II', 'L.A.Noire'],
+        -columns  => 3,
+        -rows     => 2,
+    );
+
+    print $q->h2({-style=>"color:darkblue"},'¿Cuál es tu favorito?');
+    print $q->radio_group(
+        -name     => 'Favorito',
+        -values   => ['CoD:WWII', 'Nioh', 'L.A.Noire', 'SW:Battlefront II', 'Pokémon Ultra Sun/Moon', 'RE:Revelations'],
+        -defaults => 'Nioh',
+        -columns  => 3,
+        -rows     => 2,
+    );
+
+    #Aquí vamos a hacer que el usuario pueda subir un archivo o una imagen
+
+    print ("<br>");
+    print ("<br>");
+    print ("<br>");
+
+    print 'Aquí puedes añadir una imagen o un archivo de texto acerca de este tema:*    ',
+          $q->filefield(
+              -name      => 'filename',
+          -size      => 40,
+          -maxlength => 80);
+    print $q->hr;
+    print $q->submit(-value => 'Enviar');
+    print $q->hr;
+    print "</div>";
+
+    #Comprueba que el archivo no sea demasiado grande para CGI
+
+    if (!$q->param('filename') && $q->cgi_error()) {
+        print $q->cgi_error();
+        print "El archivo que intenta subir es demasiado grande";
+        print $q->hr;
+        exit 0;
+    }
+
+    #Sube el archivo
+
+    save_file($q);
+
+    print $q->end_html;
+    exit 0;
+
+
+    #
+    print $q->end_form;
+    print $q->end_html;
+}
+else {
+    #Procesa la información y muestra los resultados
+    print $q->header(-charset => 'utf-8');
+    print $q->start_html(-title => 'Formulario');
+    print $q->h3({-style=>"color:red"},'¡Gracias por rellenar el formulario!');
+    @vg = $q->param('Videogame');
+    print $q->h2({-style=>"color:darkgrey"}," Según lo que usted, " . $q->param('Nombre') . ", ha informado, está esperando los siguientes juegos: ");
+    foreach $Videogame (@vg) {
+        print (" ► " . $Videogame);
+        print ("<br>");
+	}
+    print $q->h2({-style=>"color:darkblue"}," y su favorito de nuestra lista es " . $q->param('Favorito'));
+    print $q->end_html;
+
+    #save_file
+ sub save_file($) {
+
+        my ($q) = @_;
+        my ($bytesread, $buffer);
+        my $num_bytes = 1024;
+        my $totalbytes;
+        my $filename = $q->upload('filename');
+        my $untainted_filename;
+
+        if (!$filename) {
+            print $q->h5({-style=>"color:darkred"},'*Debes añadir un archivo antes de enviar el formulario');
+        return;
+        }
+
+        # Untaint $filename
+
+        if ($filename =~ /^([-\@:\/\\\w.]+)$/) {
+            $untainted_filename = $1;
+        } else {
+            die;
+        }
+
+        if ($untainted_filename =~ m/\.\./) {
+            die;
+        }
+
+        my $file = "/tmp/$untainted_filename";
+
+        print "Subiendo $filename a $file<BR>";
+
+        # If running this on a non-Unix/non-Linux/non-MacOS platform, be sure to 
+        # set binmode on the OUTFILE filehandle, refer to 
+        #    perldoc -f open 
+        # and
+        #    perldoc -f binmode
+
+        open (OUTFILE, ">", "$file") or die "Couldn't open $file for writing: $!";
+
+        while ($bytesread = read($filename, $buffer, $num_bytes)) {
+            $totalbytes += $bytesread;
+            print OUTFILE $buffer;
+        }
+        die "Read failure" unless defined($bytesread);
+        unless (defined($totalbytes)) {
+            print "<p>Error: No se ha podido leer el archivo ${untainted_filename}, ";
+            print "o el archivo no tenía contenido.";
+        } else {
+            print "<p>Archivo $filename subido a $file ($totalbytes bytes)";
+        }
+        close OUTFILE or die "No se ha podido cerrar $file: $!";
+
+    };
+   }
